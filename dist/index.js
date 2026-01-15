@@ -43,14 +43,19 @@ const compression_1 = __importDefault(require("compression"));
 const cookie_session_1 = __importDefault(require("cookie-session"));
 const express_1 = __importDefault(require("express"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
+const https_1 = __importDefault(require("https"));
 const helmet_1 = __importDefault(require("helmet"));
 const morgan_1 = __importDefault(require("morgan"));
+const fs_1 = __importDefault(require("fs"));
 const models_1 = __importDefault(require("./models"));
+const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const auth_route_1 = __importDefault(require("./routes/auth.route"));
 const user_route_1 = __importDefault(require("./routes/user.route"));
-const PORT = Number(process.env.PORT) || 8080;
+const PORT = Number(process.env.PORT) || 8090;
 const COOKIE_SECRET = process.env.COOKIE_SECRET;
 const MONGO_URI = process.env.MONGO_URI;
+const SSL_KEY_PATH = process.env.SSL_KEY_PATH;
+const SSL_CERT_PATH = process.env.SSL_CERT_PATH;
 const app = (0, express_1.default)();
 app.use((0, cookie_session_1.default)({
     name: "auth-session",
@@ -67,6 +72,9 @@ app.use("/api/", limiter);
 app.get("/", (_req, res) => {
     res.send("Hola");
 });
+const swagger_output_json_1 = __importDefault(require("./swagger-output.json")); // Adjust path as needed
+app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_output_json_1.default));
+//app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 (0, auth_route_1.default)(app);
 (0, user_route_1.default)(app);
 const start = async () => {
@@ -74,10 +82,23 @@ const start = async () => {
         if (!MONGO_URI) {
             throw new Error("MONGO_URI no está configurado");
         }
+        if ((SSL_KEY_PATH && !SSL_CERT_PATH) || (!SSL_KEY_PATH && SSL_CERT_PATH)) {
+            throw new Error("SSL_KEY_PATH y SSL_CERT_PATH deben estar configurados juntos");
+        }
         await models_1.default.mongoose.set('strictQuery', true);
         await models_1.default.mongoose.connect(MONGO_URI, {});
         console.log("Estas conectado");
         await models_1.default.init();
+        const protocol = SSL_KEY_PATH && SSL_CERT_PATH ? "https" : "http";
+        if (protocol === "https") {
+            const key = fs_1.default.readFileSync(SSL_KEY_PATH);
+            const cert = fs_1.default.readFileSync(SSL_CERT_PATH);
+            https_1.default.createServer({ key, cert }, app).listen(PORT, () => {
+                console.log(`Servidor iniciado en el puerto ${PORT}`);
+                console.log(`Swagger UI available at https://localhost:${PORT}/api-docs`);
+            });
+            return;
+        }
         app.listen(PORT, () => {
             console.log(`Servidor iniciado en el puerto ${PORT}`);
         });
