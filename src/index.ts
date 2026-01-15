@@ -17,7 +17,7 @@ import swaggerSpec from './swagger.config';
 import authRoutes from './routes/auth.route';
 import userRoute from './routes/user.route';
 
-const PORT = Number(process.env.PORT) || 8080;
+const PORT = Number(process.env.PORT) || 8090;
 const COOKIE_SECRET = process.env.COOKIE_SECRET;
 const MONGO_URI = process.env.MONGO_URI
 const SSL_KEY_PATH = process.env.SSL_KEY_PATH;
